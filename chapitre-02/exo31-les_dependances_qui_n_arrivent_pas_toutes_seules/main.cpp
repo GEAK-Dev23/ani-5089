@@ -25,7 +25,7 @@ int main()
         std::istringstream flux(ligne);
         std::string module;
         if (!(flux >> module)) {
-            continue; // ligne vide ignoree
+            continue;  // ligne vide ignoree
         }
         std::vector<std::string>& liste = besoins[module];
         std::string besoin;
@@ -58,7 +58,7 @@ int main()
 
         std::map<std::string, std::vector<std::string>>::const_iterator it = besoins.find(courant);
         if (it == besoins.end()) {
-            continue; // module sans ligne : aucun besoin a lui
+            continue;  // module sans ligne : aucun besoin a lui
         }
         for (const std::string& besoin : it->second) {
             if (resultat.insert(besoin).second) {
