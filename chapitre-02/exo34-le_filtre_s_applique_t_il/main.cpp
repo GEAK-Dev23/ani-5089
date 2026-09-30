@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 
@@ -33,7 +34,7 @@ static bool lireEntier(int& valeur)
     return false;
 }
 
-static bool termeVrai(const std::map<std::string, std::string>& machine, const std::string& terme)
+static bool termeVrai(const std::map<std::string, std::set<std::string>>& machine, const std::string& terme)
 {
     std::string::size_type egal = terme.find('=');
     if (egal == std::string::npos) {
@@ -42,14 +43,15 @@ static bool termeVrai(const std::map<std::string, std::string>& machine, const s
     std::string cle = rogner(terme.substr(0, egal));
     std::string valeur = rogner(terme.substr(egal + 1));
 
-    std::map<std::string, std::string>::const_iterator it = machine.find(cle);
+    // Une cle peut porter plusieurs valeurs : le terme est vrai si l'une d'elles convient
+    std::map<std::string, std::set<std::string>>::const_iterator it = machine.find(cle);
     if (it == machine.end()) {
         return false;
     }
-    return it->second == valeur;
+    return it->second.count(valeur) > 0;
 }
 
-static bool filtreApplique(const std::map<std::string, std::string>& machine, std::string condition)
+static bool filtreApplique(const std::map<std::string, std::set<std::string>>& machine, std::string condition)
 {
     // Les && deviennent des espaces : il ne reste que des termes
     std::string::size_type position = condition.find("&&");
@@ -88,7 +90,7 @@ static bool filtreApplique(const std::map<std::string, std::string>& machine, st
 int main()
 {
     // V lignes cle=valeur : l'etat de la machine
-    std::map<std::string, std::string> machine;
+    std::map<std::string, std::set<std::string>> machine;
     int v = 0;
     lireEntier(v);
     int lus = 0;
@@ -100,7 +102,7 @@ int main()
         }
         std::string::size_type egal = ligne.find('=');
         if (egal != std::string::npos) {
-            machine[rogner(ligne.substr(0, egal))] = rogner(ligne.substr(egal + 1));
+            machine[rogner(ligne.substr(0, egal))].insert(rogner(ligne.substr(egal + 1)));
         }
         ++lus;
     }
