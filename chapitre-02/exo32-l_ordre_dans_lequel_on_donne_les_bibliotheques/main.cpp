@@ -1,4 +1,4 @@
-   #include <iostream>
+#include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -106,14 +106,14 @@ int main()
         }
     }
 
-    // Il reste des modules mais aucun a zero : c'est un cycle
-    if (ordre.size() != liste.size()) {
-        std::cout << "CYCLE\n";
-        return 0;
-    }
-
+    // Les modules sortis s'affichent dans l'ordre de sortie
     for (const std::string& nom : ordre) {
         std::cout << nom << '\n';
+    }
+
+    // Il reste des modules mais aucun a zero : c'est un cycle, on s'arrete la
+    if (ordre.size() != liste.size()) {
+        std::cout << "CYCLE\n";
     }
 
     return 0;
