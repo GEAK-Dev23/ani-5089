@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 
+typedef std::map<std::string, std::set<std::string>> Machine;
+
 static void retirerRetourChariot(std::string& ligne)
 {
     if (!ligne.empty() && ligne[ligne.size() - 1] == '\r') {
@@ -34,7 +36,7 @@ static bool lireEntier(int& valeur)
     return false;
 }
 
-static bool termeVrai(const std::map<std::string, std::set<std::string>>& machine, const std::string& terme)
+static bool termeVrai(const Machine& machine, const std::string& terme)
 {
     std::string::size_type egal = terme.find('=');
     if (egal == std::string::npos) {
@@ -44,14 +46,14 @@ static bool termeVrai(const std::map<std::string, std::set<std::string>>& machin
     std::string valeur = rogner(terme.substr(egal + 1));
 
     // Une cle peut porter plusieurs valeurs : le terme est vrai si l'une d'elles convient
-    std::map<std::string, std::set<std::string>>::const_iterator it = machine.find(cle);
+    Machine::const_iterator it = machine.find(cle);
     if (it == machine.end()) {
         return false;
     }
     return it->second.count(valeur) > 0;
 }
 
-static bool filtreApplique(const std::map<std::string, std::set<std::string>>& machine, std::string condition)
+static bool filtreApplique(const Machine& machine, std::string condition)
 {
     // Les && deviennent des espaces : il ne reste que des termes
     std::string::size_type position = condition.find("&&");
@@ -90,7 +92,7 @@ static bool filtreApplique(const std::map<std::string, std::set<std::string>>& m
 int main()
 {
     // V lignes cle=valeur : l'etat de la machine
-    std::map<std::string, std::set<std::string>> machine;
+    Machine machine;
     int v = 0;
     lireEntier(v);
     int lus = 0;
