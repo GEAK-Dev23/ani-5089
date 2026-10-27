@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Le coût du doublement</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 15px system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #panneau { position: fixed; top: 16px; left: 16px; right: 16px; max-width: 680px;
+             background: rgba(0,0,0,.88); padding: 16px; border-radius: 8px; }
+  button { font-size: 16px; padding: 8px 16px; cursor: pointer; }
+  pre { white-space: pre-wrap; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panneau">
+  <b>Coût du rendu seul, puis du rendu doublé — 2 × 1000 images</b><br>
+  Même programme qu'à l'exercice 6 : il ne fait qu'effacer l'écran, il n'a aucune logique.
+  Laisse l'onglet visible et ne touche à rien (environ 40 s).<br><br>
+  <button id="go">Démarrer</button>
+  <pre id="sortie"></pre>
+</div>
+<script>
+const N = 1000;          // images mesurées par phase
+const ECHAUFFEMENT = 60; // images ignorées au début de chaque phase
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { willReadFrequently: false });
+const sortie = document.getElementById('sortie');
+
+function redimensionner() {
+  canvas.width = innerWidth * devicePixelRatio;
+  canvas.height = innerHeight * devicePixelRatio;
+}
+addEventListener('resize', redimensionner);
+redimensionner();
+
+// Le rendu seul : effacer toute la cible (une « cible de rendu » = un œil).
+function rendu(teinte) {
+  ctx.fillStyle = teinte;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// Attendre que le rendu soit réellement fait : lire un pixel oblige le navigateur
+// à terminer le travail graphique en attente avant de répondre.
+function synchroniser() {
+  ctx.getImageData(0, 0, 1, 1);
+}
+
+let phase = 0, compte = 0;
+const mesures = { simple: [], double: [] };
+
+function image() {
+  const teinte = (compte % 2) ? '#1a1a1a' : '#151515';
+
+  const t0 = performance.now();
+  if (phase === 0) {
+    rendu(teinte);                 // un œil
+  } else {
+    rendu(teinte);                 // œil gauche
+    rendu(teinte === '#1a1a1a' ? '#151515' : '#1a1a1a'); // œil droit
+  }
+  synchroniser();
+  const t1 = performance.now();
+
+  if (compte >= ECHAUFFEMENT) (phase === 0 ? mesures.simple : mesures.double).push(t1 - t0);
+  compte++;
+
+  const courant = phase === 0 ? mesures.simple : mesures.double;
+  if (courant.length < N) {
+    requestAnimationFrame(image);
+  } else if (phase === 0) {
+    phase = 1; compte = 0;
+    sortie.textContent = 'Phase 2 / 2 : rendu doublé… ne touche à rien.';
+    requestAnimationFrame(image);
+  } else {
+    rapport();
+  }
+}
+
+function stats(tab) {
+  const tri = [...tab].sort((a, b) => a - b);
+  const somme = tab.reduce((a, b) => a + b, 0);
+  return {
+    moyenne: somme / tab.length,
+    mediane: tri[Math.floor(tri.length / 2)],
+    p99: tri[Math.floor(tri.length * 0.99)],
+    max: tri[tri.length - 1]
+  };
+}
+
+function f(x) { return x.toFixed(3).replace('.', ','); }
+
+function rapport() {
+  const s = stats(mesures.simple), d = stats(mesures.double);
+  sortie.textContent =
+`Navigateur : ${navigator.userAgent}
+Cible : ${canvas.width}×${canvas.height} pixels (devicePixelRatio ${devicePixelRatio})
+
+1. RENDU SEUL (un œil), 1000 images
+   médiane : ${f(s.mediane)} ms   moyenne : ${f(s.moyenne)} ms
+   99e centile : ${f(s.p99)} ms   pire : ${f(s.max)} ms
+
+2. RENDU DOUBLÉ (deux yeux), 1000 images — mesuré, pas estimé
+   médiane : ${f(d.mediane)} ms   moyenne : ${f(d.moyenne)} ms
+   99e centile : ${f(d.p99)} ms   pire : ${f(d.max)} ms
+
+Rapport doublé / simple (médianes) : ${(d.mediane / s.mediane).toFixed(2).replace('.', ',')}
+Rapport doublé / simple (pires)    : ${(d.max / s.max).toFixed(2).replace('.', ',')}
+
+→ Copie tout ce texte et envoie-le.`;
+  document.getElementById('go').disabled = false;
+}
+
+document.getElementById('go').onclick = () => {
+  phase = 0; compte = 0; mesures.simple = []; mesures.double = [];
+  sortie.textContent = 'Phase 1 / 2 : rendu seul… ne touche à rien.';
+  document.getElementById('go').disabled = true;
+  requestAnimationFrame(image);
+};
+</script>
+</body>
+</html>
