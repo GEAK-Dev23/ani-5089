@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>La pire image</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 15px system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #panneau { position: fixed; top: 16px; left: 16px; right: 16px; max-width: 640px;
+             background: rgba(0,0,0,.85); padding: 16px; border-radius: 8px; }
+  button { font-size: 16px; padding: 8px 16px; cursor: pointer; }
+  pre { white-space: pre-wrap; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panneau">
+  <b>Mesure de la pire image — 1000 images</b><br>
+  Le programme ne fait qu'effacer l'écran à chaque image.
+  Laisse l'onglet visible et ne touche à rien pendant la mesure (environ 20 s).<br><br>
+  <button id="go">Démarrer</button>
+  <pre id="sortie"></pre>
+</div>
+<script>
+const N = 1000;          // images mesurées
+const ECHAUFFEMENT = 60; // images ignorées au départ
+const SEUIL = 11;        // ms
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const sortie = document.getElementById('sortie');
+
+function redimensionner() {
+  canvas.width = innerWidth * devicePixelRatio;
+  canvas.height = innerHeight * devicePixelRatio;
+}
+addEventListener('resize', redimensionner);
+redimensionner();
+
+let intervalles = [], travaux = [], precedent = null, compte = 0;
+
+function image(maintenant) {
+  // Intervalle : temps écoulé depuis l'image précédente (ce que voit l'utilisateur).
+  if (precedent !== null && compte >= ECHAUFFEMENT) intervalles.push(maintenant - precedent);
+  precedent = maintenant;
+
+  // Travail : temps passé par notre code pour produire l'image (ici, effacer l'écran).
+  const t0 = performance.now();
+  ctx.fillStyle = (compte % 2) ? '#1a1a1a' : '#151515';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const t1 = performance.now();
+  if (compte >= ECHAUFFEMENT) travaux.push(t1 - t0);
+
+  compte++;
+  if (intervalles.length < N) {
+    requestAnimationFrame(image);
+  } else {
+    rapport();
+  }
+}
+
+function stats(tab) {
+  const tri = [...tab].sort((a, b) => a - b);
+  const somme = tab.reduce((a, b) => a + b, 0);
+  return {
+    max: tri[tri.length - 1],
+    moyenne: somme / tab.length,
+    mediane: tri[Math.floor(tri.length / 2)],
+    p99: tri[Math.floor(tri.length * 0.99)],
+    auDessus: tab.filter(x => x > SEUIL).length,
+    pires: tri.slice(-5).reverse()
+  };
+}
+
+function f(x) { return x.toFixed(2).replace('.', ','); }
+
+function rapport() {
+  const i = stats(intervalles), w = stats(travaux);
+  const hz = 1000 / i.mediane;
+  sortie.textContent =
+`Navigateur : ${navigator.userAgent}
+Écran : ${screen.width}×${screen.height}, fréquence estimée ≈ ${Math.round(hz)} Hz
+Images mesurées : ${intervalles.length} (après ${ECHAUFFEMENT} images d'échauffement)
+
+A. DURÉE DES IMAGES (intervalle entre deux images affichées)
+   plus longue image      : ${f(i.max)} ms
+   images > ${SEUIL} ms        : ${i.auDessus} / ${intervalles.length}
+   moyenne / médiane      : ${f(i.moyenne)} / ${f(i.mediane)} ms
+   99e centile            : ${f(i.p99)} ms
+   5 pires                : ${i.pires.map(f).join(' ; ')} ms
+
+B. TRAVAIL DE NOTRE CODE (temps passé à effacer, par image)
+   plus long travail      : ${f(w.max)} ms
+   travaux > ${SEUIL} ms       : ${w.auDessus} / ${travaux.length}
+   moyenne / médiane      : ${f(w.moyenne)} / ${f(w.mediane)} ms
+
+→ Copie tout ce texte et envoie-le.`;
+  document.getElementById('go').disabled = false;
+}
+
+document.getElementById('go').onclick = () => {
+  intervalles = []; travaux = []; precedent = null; compte = 0;
+  sortie.textContent = 'Mesure en cours… ne touche à rien.';
+  document.getElementById('go').disabled = true;
+  requestAnimationFrame(image);
+};
+</script>
+</body>
+</html>
